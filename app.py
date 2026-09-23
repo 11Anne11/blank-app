@@ -15,7 +15,6 @@ from housing_value_system.bag_client import fetch_address_by_postcode, fetch_bui
 from housing_value_system.config import MODEL_DIR, PROVINCES
 from housing_value_system.data_pipeline import collect_regional_dataset, merge_exact_funda_listings
 from housing_value_system.facilities import fetch_nearby_facilities, nearest_facility_features
-from housing_value_system.funda_scraper import scrape_funda_listings, scrape_funda_listings_both, scrape_funda_listings_parallel, start_funda_browser
 from housing_value_system.modeling import is_current_model_artifact, model_input_features, predict_house_value, train_model_from_dataset
 from housing_value_system.public_data import download_cbs_odata, public_source_catalog
 from housing_value_system.public_enrichment import enrich_with_public_sources
@@ -28,6 +27,26 @@ TRAINING_TARGET_LABELS = {
     "woz_waarde": "WOZ-waarde",
     "waarde_index": "Eigen geverifieerde waarde-index",
 }
+
+
+def load_funda_scraper():
+    try:
+        from housing_value_system.funda_scraper import (
+            scrape_funda_listings,
+            scrape_funda_listings_both,
+            scrape_funda_listings_parallel,
+            start_funda_browser,
+        )
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Funda-import is niet beschikbaar. Installeer beautifulsoup4 en selenium."
+        ) from exc
+    return (
+        scrape_funda_listings,
+        scrape_funda_listings_both,
+        scrape_funda_listings_parallel,
+        start_funda_browser,
+    )
 
 
 st.set_page_config(
@@ -403,6 +422,7 @@ with selected_tab[1]:
         required_funda_pages = max(int(funda_pages), math.ceil(int(funda_target) / 10))
         if st.button("1. Funda-pagina handmatig openen"):
             try:
+                *_, start_funda_browser = load_funda_scraper()
                 if st.session_state.funda_driver is not None:
                     st.session_state.funda_driver.quit()
                 st.session_state.funda_driver = start_funda_browser(
@@ -430,6 +450,12 @@ with selected_tab[1]:
                 funda_merge_stats = {"matched": 0, "skipped_unparsed": 0, "skipped_conflicting": 0}
                 funda = pd.DataFrame()
                 if include_funda_prices:
+                    (
+                        scrape_funda_listings,
+                        scrape_funda_listings_both,
+                        scrape_funda_listings_parallel,
+                        _,
+                    ) = load_funda_scraper()
                     manual_driver = st.session_state.funda_driver
                     if int(funda_workers) > 1:
                         st.info("Er worden meerdere Chrome-vensters geopend; elk venster verwerkt andere Funda-pagina's. Funda kan per venster een CAPTCHA tonen.")
