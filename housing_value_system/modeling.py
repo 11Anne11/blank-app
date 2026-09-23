@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-import joblib
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
@@ -20,6 +19,16 @@ from .facilities import FACILITY_TYPES
 
 MIN_TRAINING_ROWS = 25
 MODEL_ARTIFACT_VERSION = 2
+
+
+def _load_joblib():
+    try:
+        import joblib
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Modelbestanden kunnen niet worden gebruikt: installeer joblib."
+        ) from exc
+    return joblib
 
 
 def _ensure_model_dir() -> Path:
@@ -217,7 +226,7 @@ def train_model_from_dataset(dataset: pd.DataFrame, target_column: str) -> Dict[
             "best_score": float(best_score),
         },
     }
-    joblib.dump(artifact, temporary_path)
+    _load_joblib().dump(artifact, temporary_path)
     temporary_path.replace(artifact_path)
 
     return {
@@ -238,7 +247,7 @@ def is_current_model_artifact(model_artifact: str | Path) -> bool:
     it together with version and prediction metadata.
     """
     try:
-        artifact = joblib.load(model_artifact)
+        artifact = _load_joblib().load(model_artifact)
     except (OSError, ValueError, EOFError, ImportError, AttributeError):
         return False
     if isinstance(artifact, Pipeline):
@@ -252,7 +261,7 @@ def is_current_model_artifact(model_artifact: str | Path) -> bool:
 
 def model_input_features(model_artifact: str | Path) -> list[str]:
     """Return the columns learned by a saved pipeline."""
-    artifact = joblib.load(model_artifact)
+    artifact = _load_joblib().load(model_artifact)
     model = artifact if isinstance(artifact, Pipeline) else artifact.get("pipeline")
     if not isinstance(model, Pipeline):
         return []
@@ -273,7 +282,7 @@ def predict_house_value(model_artifact: str, row: pd.Series) -> Dict[str, Any]:
     if not artifact_path.is_file():
         raise FileNotFoundError("Modelbestand niet gevonden.")
 
-    artifact = joblib.load(artifact_path)
+    artifact = _load_joblib().load(artifact_path)
     if isinstance(artifact, Pipeline):
         model = artifact
         metadata: dict[str, Any] = {}
