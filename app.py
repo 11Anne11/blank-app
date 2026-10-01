@@ -15,9 +15,22 @@ from housing_value_system.bag_client import fetch_address_by_postcode, fetch_bui
 from housing_value_system.config import MODEL_DIR, PROVINCES
 from housing_value_system.data_pipeline import collect_regional_dataset, merge_exact_funda_listings
 from housing_value_system.facilities import fetch_nearby_facilities, nearest_facility_features
-from housing_value_system.modeling import is_current_model_artifact, model_input_features, predict_house_value, train_model_from_dataset
 from housing_value_system.public_data import download_cbs_odata, public_source_catalog
 from housing_value_system.public_enrichment import enrich_with_public_sources
+
+try:
+    from housing_value_system.modeling import (
+        is_current_model_artifact,
+        model_input_features,
+        predict_house_value,
+        train_model_from_dataset,
+    )
+except ModuleNotFoundError as exc:
+    if exc.name != "sklearn" and not (exc.name or "").startswith("sklearn."):
+        raise
+    MODELING_AVAILABLE = False
+else:
+    MODELING_AVAILABLE = True
 
 
 CURRENT_YEAR = datetime.now().year
@@ -172,7 +185,12 @@ with st.sidebar:
     st.header("Over Woonwaarde")
     st.write("Een prijsindicatie op basis van woningkenmerken, BAG-locatiegegevens en een gevalideerd model.")
     artifact = MODEL_DIR / "best_housing_model.pkl"
-    if artifact.exists() and is_current_model_artifact(artifact):
+    if not MODELING_AVAILABLE:
+        st.warning(
+            "Waarderingsmodel niet beschikbaar: scikit-learn ontbreekt. "
+            "Controleer requirements.txt en herstart de app."
+        )
+    elif artifact.exists() and is_current_model_artifact(artifact):
         st.success("Waarderingsmodel beschikbaar (inclusief oudere modellen)")
         learned_features = model_input_features(artifact)
         if "woningtype" not in learned_features:
@@ -271,7 +289,12 @@ with selected_tab[0]:
 
     if calculate:
         artifact = MODEL_DIR / "best_housing_model.pkl"
-        if not artifact.exists():
+        if not MODELING_AVAILABLE:
+            st.error(
+                "Waarderen is tijdelijk niet beschikbaar omdat scikit-learn ontbreekt. "
+                "Controleer requirements.txt en herstart de app."
+            )
+        elif not artifact.exists():
             st.error("Er is nog geen getraind model. Train eerst een model in de tab Modeltraining.")
         elif not is_current_model_artifact(artifact):
             st.error("Het modelbestand kan niet veilig worden geladen. Train een nieuw model.")
@@ -568,6 +591,11 @@ with selected_tab[1]:
 
 with selected_tab[2]:
     st.subheader("Train en vergelijk modellen")
+    if not MODELING_AVAILABLE:
+        st.warning(
+            "Modeltraining is niet beschikbaar omdat scikit-learn ontbreekt. "
+            "Controleer requirements.txt en herstart de app."
+        )
     uploaded = st.file_uploader("Upload een dataset (CSV of JSON)", type=["csv", "json"])
     if uploaded is not None:
         try:
@@ -577,7 +605,11 @@ with selected_tab[2]:
             if price_columns:
                 target = st.selectbox("Prijsdoel voor training", price_columns)
                 st.caption(f"Training gebruikt {len(df)} records en het doelveld `{target}`.")
-                if st.button("Model trainen met upload", key="train_uploaded"):
+                if st.button(
+                    "Model trainen met upload",
+                    key="train_uploaded",
+                    disabled=not MODELING_AVAILABLE,
+                ):
                     metrics = train_model_from_dataset(df, target)
                     st.success("Model getraind en opgeslagen.")
                     st.json(metrics)
@@ -607,7 +639,11 @@ with selected_tab[2]:
                 else:
                     target = st.selectbox("Prijsdoel voor training", target_candidates, key="stored_target")
                     st.caption(f"Training gebruikt {len(dataset)} records en het doelveld `{target}`.")
-                    if st.button("Opgeslagen dataset trainen", key="train_stored"):
+                    if st.button(
+                        "Opgeslagen dataset trainen",
+                        key="train_stored",
+                        disabled=not MODELING_AVAILABLE,
+                    ):
                         metrics = train_model_from_dataset(dataset, target)
                         st.success("Model getraind en opgeslagen.")
                         st.json(metrics)
