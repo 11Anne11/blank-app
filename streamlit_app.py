@@ -40,6 +40,34 @@ TRAINING_TARGET_LABELS = {
     "woz_waarde": "WOZ-waarde",
     "waarde_index": "Eigen geverifieerde waarde-index",
 }
+KNOWN_FIELD_KEYS = (
+    "known_area",
+    "known_lot",
+    "known_year",
+    "known_volume",
+    "known_rooms",
+    "known_bedrooms",
+    "known_bathrooms",
+    "known_floors",
+    "known_label",
+    "known_type",
+    "known_build_type",
+    "known_roof",
+    "known_other_area",
+    "known_storage_area",
+    "known_attached_outdoor_area",
+    "known_insulation",
+    "known_heating",
+    "known_hot_water",
+    "known_parking",
+    "known_garden",
+    "known_garden_location",
+)
+
+
+def set_known_fields(value: bool) -> None:
+    for key in KNOWN_FIELD_KEYS:
+        st.session_state[key] = value
 
 
 def load_funda_scraper():
@@ -68,6 +96,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+for key in KNOWN_FIELD_KEYS:
+    st.session_state.setdefault(key, True)
 
 st.markdown(
     """
@@ -259,31 +290,46 @@ with selected_tab[0]:
 
         with st.expander("Welke gegevens weet je?", expanded=False):
             st.caption("Laat een vinkje staan als je het kenmerk weet. Haal het vinkje weg als je het niet weet.")
+            select_all, deselect_all = st.columns(2)
+            with select_all:
+                st.form_submit_button(
+                    "Selecteer alles",
+                    on_click=set_known_fields,
+                    args=(True,),
+                    width="stretch",
+                )
+            with deselect_all:
+                st.form_submit_button(
+                    "Deselecteer alles",
+                    on_click=set_known_fields,
+                    args=(False,),
+                    width="stretch",
+                )
             known_left, known_mid, known_right = st.columns(3)
             with known_left:
-                known_area = st.checkbox("Woonoppervlakte", value=True, key="known_area")
-                known_lot = st.checkbox("Perceeloppervlakte", value=True, key="known_lot")
-                known_year = st.checkbox("Bouwjaar", value=True, key="known_year")
-                known_volume = st.checkbox("Inhoud", value=True, key="known_volume")
-                known_rooms = st.checkbox("Aantal kamers", value=True, key="known_rooms")
-                known_bedrooms = st.checkbox("Aantal slaapkamers", value=True, key="known_bedrooms")
-                known_bathrooms = st.checkbox("Aantal badkamers", value=True, key="known_bathrooms")
+                known_area = st.checkbox("Woonoppervlakte", key="known_area")
+                known_lot = st.checkbox("Perceeloppervlakte", key="known_lot")
+                known_year = st.checkbox("Bouwjaar", key="known_year")
+                known_volume = st.checkbox("Inhoud", key="known_volume")
+                known_rooms = st.checkbox("Aantal kamers", key="known_rooms")
+                known_bedrooms = st.checkbox("Aantal slaapkamers", key="known_bedrooms")
+                known_bathrooms = st.checkbox("Aantal badkamers", key="known_bathrooms")
             with known_mid:
-                known_floors = st.checkbox("Aantal woonlagen", value=True, key="known_floors")
-                known_label = st.checkbox("Energielabel", value=True, key="known_label")
-                known_type = st.checkbox("Woningtype", value=True, key="known_type")
-                known_build_type = st.checkbox("Soort bouw", value=True, key="known_build_type")
-                known_roof = st.checkbox("Soort dak", value=True, key="known_roof")
-                known_other_area = st.checkbox("Overige inpandige ruimte", value=True, key="known_other_area")
-                known_storage_area = st.checkbox("Externe bergruimte", value=True, key="known_storage_area")
+                known_floors = st.checkbox("Aantal woonlagen", key="known_floors")
+                known_label = st.checkbox("Energielabel", key="known_label")
+                known_type = st.checkbox("Woningtype", key="known_type")
+                known_build_type = st.checkbox("Soort bouw", key="known_build_type")
+                known_roof = st.checkbox("Soort dak", key="known_roof")
+                known_other_area = st.checkbox("Overige inpandige ruimte", key="known_other_area")
+                known_storage_area = st.checkbox("Externe bergruimte", key="known_storage_area")
             with known_right:
-                known_attached_outdoor_area = st.checkbox("Gebouwgebonden buitenruimte", value=True, key="known_attached_outdoor_area")
-                known_insulation = st.checkbox("Isolatie", value=True, key="known_insulation")
-                known_heating = st.checkbox("Verwarming", value=True, key="known_heating")
-                known_hot_water = st.checkbox("Warm water", value=True, key="known_hot_water")
-                known_parking = st.checkbox("Parkeren", value=True, key="known_parking")
-                known_garden = st.checkbox("Tuin", value=True, key="known_garden")
-                known_garden_location = st.checkbox("Ligging tuin", value=True, key="known_garden_location")
+                known_attached_outdoor_area = st.checkbox("Gebouwgebonden buitenruimte", key="known_attached_outdoor_area")
+                known_insulation = st.checkbox("Isolatie", key="known_insulation")
+                known_heating = st.checkbox("Verwarming", key="known_heating")
+                known_hot_water = st.checkbox("Warm water", key="known_hot_water")
+                known_parking = st.checkbox("Parkeren", key="known_parking")
+                known_garden = st.checkbox("Tuin", key="known_garden")
+                known_garden_location = st.checkbox("Ligging tuin", key="known_garden_location")
 
         calculate = st.form_submit_button("Bereken de woningwaarde", type="primary", width="stretch")
 
